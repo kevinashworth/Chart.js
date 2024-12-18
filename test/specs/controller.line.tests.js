@@ -964,4 +964,156 @@ describe('Chart.controllers.line', function() {
     expect(isNaN(x)).toBe(false);
     expect(isNaN(y)).toBe(false);
   });
+
+  it('should honor spangap interval forwards', function() {
+    var chart = window.acquireChart({
+      type: 'line',
+      data: {
+        datasets: [{
+          spanGaps: 10,
+          data: [{x: 10, y: 123}, {x: 15, y: 124}, {x: 26, y: 125}, {x: 30, y: 126}, {x: 35, y: 127}],
+          label: 'dataset1',
+        }],
+      },
+      options: {
+        scales: {
+          x: {
+            type: 'linear',
+          }
+        }
+      }
+    });
+
+    var meta = chart.getDatasetMeta(0);
+    for (var i = 0; i < meta.data.length; ++i) {
+      var point = meta.data[i];
+      expect(point.stop).toBe(i === 2);
+    }
+  });
+
+  it('should honor spangap interval backwards', function() {
+    var chart = window.acquireChart({
+      type: 'line',
+      data: {
+        datasets: [{
+          spanGaps: 10,
+          data: [{x: 35, y: 123}, {x: 30, y: 124}, {x: 26, y: 125}, {x: 15, y: 126}, {x: 10, y: 127}],
+          label: 'dataset1',
+        }],
+      },
+      options: {
+        scales: {
+          x: {
+            type: 'linear',
+          }
+        }
+      }
+    });
+
+    var meta = chart.getDatasetMeta(0);
+    for (var i = 0; i < meta.data.length; ++i) {
+      var point = meta.data[i];
+      expect(point.stop).toBe(i === 3);
+    }
+  });
+
+  it('should correctly calc visible points on update', async() => {
+    var chart = window.acquireChart({
+      type: 'line',
+      data: {
+        datasets: [{
+          data: [
+            {x: 10, y: 20},
+            {x: 15, y: 19},
+          ]
+        }],
+      },
+      options: {
+        scales: {
+          y: {
+            type: 'linear',
+            min: 0,
+            max: 25,
+          },
+          x: {
+            type: 'linear',
+            min: 0,
+            max: 50
+          },
+        }
+      }
+    });
+
+    chart.data.datasets[0].data = [
+      {x: 10, y: 20},
+      {x: 15, y: 19},
+      {x: 17, y: 12},
+      {x: 50, y: 9},
+      {x: 50, y: 9},
+      {x: 50, y: 9},
+      {x: 51, y: 9},
+      {x: 52, y: 9},
+      {x: 52, y: 9},
+    ];
+    chart.update();
+
+    var point = chart.getDatasetMeta(0).data[0];
+    var event = {
+      type: 'mousemove',
+      native: true,
+      ...point
+    };
+
+    chart._handleEvent(event, false, true);
+
+    const visiblePoints = chart.getSortedVisibleDatasetMetas()[0].data.filter(_ => !_.skip);
+
+    expect(visiblePoints.length).toBe(6);
+  }, 500);
+
+  it('should not override tooltip title and label callbacks', async() => {
+    const chart = window.acquireChart({
+      type: 'line',
+      data: {
+        labels: ['Label 1', 'Label 2'],
+        datasets: [{
+          data: [21, 79],
+          label: 'Dataset 1'
+        }, {
+          data: [33, 67],
+          label: 'Dataset 2'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+      }
+    });
+    const {tooltip} = chart;
+    const point = chart.getDatasetMeta(0).data[0];
+
+    await jasmine.triggerMouseEvent(chart, 'mousemove', point);
+
+    expect(tooltip.title).toEqual(['Label 1']);
+    expect(tooltip.body).toEqual([{
+      before: [],
+      lines: ['Dataset 1: 21'],
+      after: []
+    }]);
+
+    chart.options.plugins.tooltip = {mode: 'dataset'};
+    chart.update();
+    await jasmine.triggerMouseEvent(chart, 'mousemove', point);
+
+    expect(tooltip.title).toEqual(['Dataset 1']);
+    expect(tooltip.body).toEqual([{
+      before: [],
+      lines: ['Label 1: 21'],
+      after: []
+    }, {
+      before: [],
+      lines: ['Label 2: 79'],
+      after: []
+    }]);
+  });
 });

@@ -1,14 +1,13 @@
-import {LineElement} from '../../elements';
-import {isArray, isFinite} from '../../helpers';
-import {_getTargetPixel, _getTargetValue} from './filler.options';
-import {_pointsFromSegments} from './filler.segment';
-import {_buildStackLine} from './filler.target.stack';
-import {simpleArc} from './simpleArc';
+import {isFinite} from '../../helpers/index.js';
+import {_createBoundaryLine} from './filler.helper.js';
+import {_getTargetPixel, _getTargetValue} from './filler.options.js';
+import {_buildStackLine} from './filler.target.stack.js';
+import {simpleArc} from './simpleArc.js';
 
 /**
- * @typedef { import('../../core/core.controller').default } Chart
- * @typedef { import('../../core/core.scale').default } Scale
- * @typedef { import('../../elements/element.point').default } PointElement
+ * @typedef { import('../../core/core.controller.js').default } Chart
+ * @typedef { import('../../core/core.scale.js').default } Scale
+ * @typedef { import('../../elements/element.point.js').default } PointElement
  */
 
 export function _getTarget(source) {
@@ -33,31 +32,6 @@ export function _getTarget(source) {
   }
 
   return _createBoundaryLine(boundary, line);
-}
-
-/**
- * @param {PointElement[] | { x: number; y: number; }} boundary
- * @param {LineElement} line
- * @return {LineElement?}
- */
-export function _createBoundaryLine(boundary, line) {
-  let points = [];
-  let _loop = false;
-
-  if (isArray(boundary)) {
-    _loop = true;
-    // @ts-ignore
-    points = boundary;
-  } else {
-    points = _pointsFromSegments(boundary, line);
-  }
-
-  return points.length ? new LineElement({
-    points,
-    options: {tension: 0},
-    _loop,
-    _fullLoop: _loop
-  }) : null;
 }
 
 /**
